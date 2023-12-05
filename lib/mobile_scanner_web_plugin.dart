@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:html' as html;
-import 'dart:ui' as ui;
+import 'dart:ui_web' as ui;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:mobile_scanner/mobile_scanner_web.dart';
-import 'package:mobile_scanner/src/barcode_utility.dart';
+import 'package:mobile_scanner/src/enums/barcode_format.dart';
 import 'package:mobile_scanner/src/enums/camera_facing.dart';
-import 'package:mobile_scanner/src/objects/barcode.dart';
 
 /// This plugin is the web implementation of mobile_scanner.
 /// It only supports QR codes.
@@ -84,8 +83,6 @@ class MobileScannerWebPlugin {
       cameraFacing = CameraFacing.values[arguments['facing'] as int];
     }
 
-    // See https://github.com/flutter/flutter/issues/41563
-    // ignore: UNDEFINED_PREFIXED_NAME, avoid_dynamic_calls
     ui.platformViewRegistry.registerViewFactory(
       viewID,
       (int id) {
@@ -110,7 +107,7 @@ class MobileScannerWebPlugin {
       if (arguments.containsKey('formats')) {
         formats = (arguments['formats'] as List)
             .cast<int>()
-            .map((e) => toFormat(e))
+            .map(BarcodeFormat.fromRawValue)
             .toList();
       }
 
@@ -130,8 +127,6 @@ class MobileScannerWebPlugin {
       _barCodeStreamSubscription =
           barCodeReader.detectBarcodeContinuously().listen((code) {
         if (code != null) {
-          final List<Offset>? corners = code.corners;
-
           controller.add({
             'name': 'barcodeWeb',
             'data': {
@@ -139,9 +134,9 @@ class MobileScannerWebPlugin {
               'rawBytes': code.rawBytes,
               'format': code.format.rawValue,
               'displayValue': code.displayValue,
-              'type': code.type.index,
-              if (corners != null && corners.isNotEmpty)
-                'corners': corners
+              'type': code.type.rawValue,
+              if (code.corners.isNotEmpty)
+                'corners': code.corners
                     .map(
                       (Offset c) => <Object?, Object?>{'x': c.dx, 'y': c.dy},
                     )
@@ -152,9 +147,10 @@ class MobileScannerWebPlugin {
       });
 
       final hasTorch = await barCodeReader.hasTorch();
+      final bool? enableTorch = arguments['torch'] as bool?;
 
-      if (hasTorch && arguments.containsKey('torch')) {
-        await barCodeReader.toggleTorch(enabled: arguments['torch'] as bool);
+      if (hasTorch && enableTorch != null) {
+        await barCodeReader.toggleTorch(enabled: enableTorch);
       }
 
       return {
@@ -188,7 +184,8 @@ class MobileScannerWebPlugin {
 
   /// Stops the video feed and analyzer
   Future<void> cancel() async {
-    barCodeReader.stop();
+    await barCodeReader.stop();
+    await barCodeReader.stopDetectBarcodeContinuously();
     await _barCodeStreamSubscription?.cancel();
     _barCodeStreamSubscription = null;
   }

@@ -6,6 +6,7 @@ import 'dart:html';
 import 'dart:typed_data';
 
 import 'package:js/js.dart';
+import 'package:mobile_scanner/src/enums/barcode_format.dart';
 import 'package:mobile_scanner/src/enums/camera_facing.dart';
 import 'package:mobile_scanner/src/objects/barcode.dart';
 import 'package:mobile_scanner/src/web/base.dart';
@@ -80,6 +81,11 @@ class JsQrCodeReader extends WebBarcodeReaderBase
         format: BarcodeFormat.qrCode,
       );
     });
+  }
+
+  @override
+  Future<void> stopDetectBarcodeContinuously() async {
+    return;
   }
 
   /// Captures a frame and analyzes it for QR codes
